@@ -1,0 +1,43 @@
+%reload_ext autoreload
+%autoreload 2
+
+import os, sys
+
+import numpy as np
+import scipy as sp
+import scipy.integrate
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+CWD = os.path.abspath(os.path.curdir)
+print("CWD: '{}'".format(CWD))
+
+ODIR = os.path.join(CWD, "output", "")
+if not os.path.exists(ODIR):
+    os.makedirs(ODIR)
+    print("Created output directory: '{}'".format(ODIR))
+
+par_dir = os.path.join(CWD, os.path.pardir)
+if par_dir not in sys.path:
+    sys.path.append(par_dir)
+    print("Added parent directory: '{}'".format(par_dir))
+
+import bhem
+import bhem.basics
+from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC
+
+np.seterr(over='ignore');
+
+# Plotting settings
+mpl.rc('font', **{'family': 'serif', 'sans-serif': ['Times']})
+mpl.rc('lines', solid_capstyle='round')
+mpl.rc('mathtext', fontset='cm')
+plt.rcParams.update({'grid.alpha': 0.5})
+
+FS_TITLE = 20
+FS_LABEL = 16
+
+plt.rcParams.update({'axes.titlesize': FS_TITLE})
+plt.rcParams.update({'axes.labelsize': FS_LABEL})
+plt.rcParams.update({'xtick.labelsize': FS_LABEL})
+plt.rcParams.update({'ytick.labelsize': FS_LABEL})
