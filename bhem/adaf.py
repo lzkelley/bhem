@@ -8,8 +8,8 @@ Based on:
 
 import numpy as np
 
-from . import basics
-from . constants import SPLC, NWTG
+from . import basics, utils
+from . constants import SPLC, NWTG, YR, MSOL
 
 # Extrema in radii, in units of Schwarzschild
 RAD_EXTR = [1.0, 1.0e4]
@@ -17,9 +17,9 @@ RAD_EXTR = [1.0, 1.0e4]
 
 class Disk:
 
-    def __init__(self, mass, mdot, nrad):
+    def __init__(self, mass, nrad, mdot=None, fedd=None):
         self.mass = mass
-        self.mdot = mdot
+        self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
         self.nrad = nrad
         self.rad_schw = basics.radius_schwarzschild(mass)
 
@@ -28,7 +28,8 @@ class Disk:
         self._calc_primitives()
 
     def __str__(self):
-        pass
+        rv = "Mass: {} [Msol]  Mdot: {} [Msol/yr]  Fedd: {}".format(
+            self.mass/MSOL, self.mdot*YR/MSOL)
 
     def _init_primitives(self):
         nrad = self.nrad
@@ -57,8 +58,9 @@ class Disk:
 
 class ADAF(Disk):
 
-    def __init__(self, mass, mdot, nrad, alpha_visc=0.1, frac_adv=0.5, gamma_sh=4.0/3.0):
-        super.__init__(mass, mdot, nrad)
+    def __init__(self, mass, nrad, mdot=None, fedd=None,
+                 alpha_visc=0.1, frac_adv=0.5, gamma_sh=4.0/3.0):
+        super.__init__(mass, nrad, mdot=mdot, fedd=fedd)
         # Alpha-disc (Shakura-Sunyaev) viscocity parameter
         self.alpha_visc = alpha_visc
         # Fraction of viscously dissipated energy which is advected
