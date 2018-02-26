@@ -16,29 +16,72 @@ def heating_coulomb_ie(ne, ni, te, ti):
     """Heating of electrons from Coulomb collisions with Ions.
 
     Based on NY95b Eq 3.1
+
+    The Bessel functions (`K_n(x)`) used in this calculated approach zero *very quickly*
+    for `x >> 1`.  This causes numerical issues when using the expression as given (Eq. 3.1).
+    Instead, in problematic regimes, use approximation for large x, i.e. that
+
+        lim x->inf  K_n(x) = a * exp(-x) / sqrt(x),   where  a = sqrt(pi/2)
+
+    This approach seems to be accurate to at worst about 10%.
+
     """
 
+    if np.isscalar(te) or np.isscalar(ti):
+        raise ValueError("Only arrays work as temperature input ATM")
+
     NORM = 5.61e-32  # erg/cm^3/s
+
+    # where to use approximations for Bessel functions
+    #    Note that the arguments to bessel functions are ~ 1/theta (the dimensionless temperatures)
+    CUTOFF = 1.0/30.0
 
     kte = K_BLTZ * te
     kti = K_BLTZ * ti
 
     # Dimensionless temperatures (NY95b Eq. 3.2)
     theta_e = kte / MELC_C2
-    theta_i = kti / MELC_C2
+    theta_i = kti / MPRT_C2
     te_ti = theta_e + theta_i
     red_temp = te_ti / (theta_e * theta_i)
+    term = ((np.square(te_ti) + 1) / te_ti) + 1
 
     k2e = sp.special.kn(2, 1/theta_e)
     k2i = sp.special.kn(2, 1/theta_i)
+
     k1r = sp.special.kn(1, red_temp)
     k0r = sp.special.kn(0, red_temp)
 
-    term1 = ne * ni * (ti - te) / (k2e * k2i)
-    term2 = (2*np.square(te_ti) + 1) * k1r / te_ti
-    term3 = 2*k0r
+    # We have a general expression below, `qie = amp * f1 * (term * f2 + f3)`
+    #    where `amp` and `term` are fixed, but `f1`, `f2`, `f3` may be calculated using
+    #    approximations when in the appropriate regime
+    f1 = np.ones_like(te)
+    f2 = np.ones_like(te)
+    f3 = np.ones_like(te)
 
-    qie = NORM * term1 * (term2 + term3)
+    # If both dimensionless-temperatures are <~ 1, use full expression
+    idx = (theta_e >= CUTOFF) & (theta_i >= CUTOFF)
+    f1[idx] = 1.0 / (k2e[idx] * k2i[idx])
+    f2[idx] = k1r[idx]
+    f3[idx] = k0r[idx]
+
+    # If both dimensionless-temperatures are >> 1, use full approximation
+    #    f2 and f3 are unity in this case
+    idx = (theta_e < CUTOFF) & (theta_i < CUTOFF)
+    f1[idx] = np.sqrt(2 / (np.pi * te_ti[idx]))
+
+    # If electron dimensionless-temp is >> 1, approximate only that term
+    #    f2 and f3 are unity in this case
+    idx = (theta_e < CUTOFF) & (theta_i >= CUTOFF)
+    f1[idx] = np.exp(-1/theta_i[idx]) / k2i[idx]
+
+    # If ion dimensionless-temp is >> 1, approximate only that term
+    #    f2 and f3 are unity in this case
+    idx = (theta_e >= CUTOFF) & (theta_i < CUTOFF)
+    f1[idx] = np.exp(-1/theta_e[idx]) / k2e[idx]
+
+    amp = NORM * 2 * ne * ni * (ti - te)
+    qie = amp * f1 * (term * f2 + f3)
     return qie
 
 
