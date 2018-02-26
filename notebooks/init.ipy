@@ -25,7 +25,8 @@ if par_dir not in sys.path:
 import bhem
 import bhem.basics
 import bhem.adaf
-from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC
+import bhem.radiation
+from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC, MPRT, MELC
 
 np.seterr(over='ignore');
 
