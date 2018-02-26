@@ -97,7 +97,7 @@ def cooling_brems_ei(ne, te):
         return 4 * np.sqrt(2*th_e/np.power(np.pi, 3)) * (1 + 1.781 * np.power(th_e, 1.34))
 
     def func_hi(th_e):
-        return 9 * th_e * (np.log(1.123*th_e + 0.48) + 1.5) / 2*np.pi
+        return 9 * th_e * (np.log(1.123*th_e + 0.48) + 1.5) / (2*np.pi)
 
     # eq. 3.6
     if np.isscalar(theta_e):
