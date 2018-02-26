@@ -6,6 +6,7 @@ import scipy as sp
 import scipy.interpolate
 
 from . import basics
+from . constants import MPRT
 
 
 def log_interp1d(xx, yy, kind='linear', **kwargs):
@@ -39,3 +40,24 @@ def mdot_fedd(mass, mdot, fedd, raise_error=True):
         raise ValueError("`mdot` or `fedd` must be given!")
 
     return None, None
+
+
+def ndens_elc(dens, frac_hmass):
+    """Calculate the number-density of electrons based on the mass-density and hydrogen mass frac.
+    """
+    X = frac_hmass   # Hydrogen mass-frac
+    Y = 1.0 - X      # Helium mass-fraction
+    Z = 0.0          # Higher-element mass-fraction
+    nde = (dens/MPRT) * (X + 2*Y/4 + Z/2)
+    return nde
+
+
+def ndens_ion(dens, frac_hmass):
+    """Calculate the number-density of ions based on the mass-density and hydrogen mass frac.
+    """
+    X = frac_hmass   # Hydrogen mass-frac
+    Y = 1.0 - X      # Helium mass-fraction
+    Z = 0.0          # Higher-element mass-fraction
+    # This assumes an average charge for heavier-elements of ~8
+    nde = (dens/MPRT) * (X + Y/4 + Z/16)
+    return nde
