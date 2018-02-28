@@ -15,13 +15,14 @@ class Mahadevan96:
         """
         self.freqs = freqs
 
+        # Mass in units of solar=masses
+        self.msol = adaf.ms
+        self.fedd = adaf.fedd
+
         # self._adaf = adaf
         self._alpha = adaf.alpha_visc
         self._beta = adaf.beta_gp
         self._eps_prime = adaf._eps_prime
-        # Mass in units of solar=masses
-        self._msol = adaf.ms
-        self._fedd = adaf.fedd
         self._delta = MELC/MPRT  # fraction of energy transfered to electrons from viscous heating
         self._c1 = adaf._c1
         self._c3 = adaf._c3
@@ -38,50 +39,60 @@ class Mahadevan96:
 
     def _solve(self):
         def _func(tt):
-            qv, qs, qb, qc = self.heat_cool(tt)
+            qv, qs, qb, qc = self._heat_cool(tt)
             rv = qv - (qs + qb + qc)
             return rv
 
-        self.temp_e = sp.optimize.newton(_func, 1e9)
+        try:
+            self.temp_e = sp.optimize.newton(_func, 1e11)
+        except RuntimeError as err:
+            print("WARNING: First optimization failed: ", err)
+            self.temp_e = sp.optimize.newton(_func, 1e10)
+
         self.theta_e = radiation.dimensionless_temperature_theta(self.temp_e, MELC)
         print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
             self.temp_e, self.theta_e))
-        self._xm_e = xm_from_te(self.temp_e, self._msol, self._fedd)
-        self._s2 = self.const_s2(self.xm_e)
+        self._xm_e = xm_from_te(self.temp_e, self.msol, self.fedd)
+        self._s2 = self._const_s2(self._xm_e)
 
         freqs = self.freqs
-        self.spectrum_synch = self.calc_spectrum_synch(freqs)
-        self.spectrum_brems = self.calc_spectrum_brems(freqs)
-        self.spectrum_compt = self.calc_spectrum_compt(freqs)
+        synch = self._calc_spectrum_synch(freqs)
+        brems = self._calc_spectrum_brems(freqs)
+        compt = self._calc_spectrum_compt(freqs)
+
+        self.spectrum_synch = synch
+        self.spectrum_brems = brems
+        self.spectrum_compt = compt
+        self.spectrum = synch + brems + compt
         return
 
-    def const_s2(xm):
+    def _const_s2(self, xm):
         s2 = 1.19e-13 * xm
         return s2
 
-    def heat_cool(self, temp):
+    def _heat_cool(self, temp):
         """Calculate heating and cooling rates for disk as a whole.
         """
 
-        alpha = self.alpha
-        beta = self.beta
-        eps_prime = self.eps_prime
+        alpha = self._alpha
+        beta = self._beta
+        eps_prime = self._eps_prime
         msol = self.msol
         fedd = self.fedd
-        delta = self.delta
-        c1 = self.c1
-        c3 = self.c3
-        rmin = self.rmin
-        rmax = self.rmax
+        delta = self._delta
+        c1 = self._c1
+        c3 = self._c3
+        rmin = self._rmin
+        rmax = self._rmax
 
         theta = K_BLTZ * temp / (MELC * SPLC * SPLC)
         xm = xm_from_te(temp, msol, fedd)
 
         s1 = 1.42e9 * np.sqrt(1 - beta) * np.sqrt(c3 / c1 / alpha)
-        s2 = self.const_s2(xm)
+        s2 = self._const_s2(xm)
         s3 = 1.05e-24
 
-        alpha_crit, mean_amp_a, tau_es = self.compton_params(temp, fedd, rmin)
+        alpha_crit, mean_amp_a, tau_es = self._compton_params(temp, fedd)
 
         # Viscous Heating
         # ---------------
@@ -93,7 +104,7 @@ class Mahadevan96:
         # Synchrotron
         # -----------
         # Eq. 24  [Hz]
-        f_p = self.freq_synch_peak(temp, msol, fedd, rmin, s2=s2)
+        f_p = self._freq_synch_peak(temp, msol, fedd, s2=s2)
         lum_synch_peak = np.power(s1 * s2, 3) * s3 * np.power(rmin, -1.75) * np.sqrt(msol)
         lum_synch_peak *= np.power(fedd, 1.5) * np.power(temp, 7) / f_p
 
@@ -114,25 +125,16 @@ class Mahadevan96:
 
         return heat_elc, power_synch, power_brems, power_compt
 
-    def freq_synch_peak(self, temp, msol, fedd, s2=None):
+    def _freq_synch_peak(self, temp, msol, fedd, s2=None):
         """Mahadevan 1996 Eq. 24
         """
         if s2 is None:
-            xm = self.xm_from_te(temp, msol, fedd)
-            s2 = self.const_s2(xm)
+            xm = xm_from_te(temp, msol, fedd)
+            s2 = self._const_s2(xm)
         nu_p = self._s1 * s2 * np.sqrt(fedd/msol) * np.square(temp) * np.power(self._rmin, -1.25)
         return nu_p
 
-    def freq_synch_crit(self, rs, msol, fedd, temp, s2=None):
-        """Mahadevan 1996 Eq. 21
-        """
-        if s2 is None:
-            xm = self.xm_from_te(temp, msol, fedd)
-            s2 = self.const_s2(xm)
-        nu_c = self._s1*s2*np.sqrt(fedd/msol) * np.square(temp) / np.power(rs, 1.25)
-        return nu_c
-
-    def compton_params(self, te, fedd):
+    def _compton_params(self, te, fedd):
         """Mahadevan Eqs. 31-34
         """
         theta_e = radiation.dimensionless_temperature_theta(te, MELC)
@@ -144,16 +146,16 @@ class Mahadevan96:
         alpha_crit = - np.log(tau_es) / np.log(mean_amp_a)
         return alpha_crit, mean_amp_a, tau_es
 
-    def synch_peak(self, fedd, msol, temp, s2=None):
+    def _synch_peak(self, fedd, msol, temp, s2=None):
         if s2 is None:
-            xm = self.xm_from_te(temp, msol, fedd)
-            s2 = self.const_s2(xm)
-        f_p = self.freq_synch_peak(temp, msol, fedd, s2=s2)
+            xm = xm_from_te(temp, msol, fedd)
+            s2 = self._const_s2(xm)
+        f_p = self._freq_synch_peak(temp, msol, fedd, s2=s2)
         l_p = np.power(self._s1 * s2, 3) * self._s3 * np.power(self._rmin, -1.75) * np.sqrt(msol)
         l_p *= np.power(fedd, 1.5) * np.power(temp, 7) / f_p
         return f_p, l_p
 
-    def calc_spectrum_synch(self, freqs):
+    def _calc_spectrum_synch(self, freqs):
         """Mahadevan 1996 - Eq. 25
 
         Cutoff above peak frequency (i.e. ignore exponential portion).
@@ -166,11 +168,11 @@ class Mahadevan96:
         lnu *= np.power(msol, 1.2) * np.power(fedd, 0.8)
         lnu *= np.power(self.temp_e, 4.2) * np.power(freqs, 0.4)
 
-        nu_p = self.freq_synch_peak(self.temp_e, msol, fedd, self._s2)
+        nu_p = self._freq_synch_peak(self.temp_e, msol, fedd, s2=self._s2)
         lnu[freqs > nu_p] = 0.0
         return lnu
 
-    def calc_spectrum_brems(self, freqs):
+    def _calc_spectrum_brems(self, freqs):
         """Mahadevan 1996 - Eq. 30
         """
         msol = self.msol
@@ -184,7 +186,7 @@ class Mahadevan96:
         lbrems = const * t1 * fe * t2
         return lbrems
 
-    def calc_spectrum_compt(self, freqs):
+    def _calc_spectrum_compt(self, freqs):
         """Compton Scattering spectrum from upscattering of Synchrotron photons.
 
         Mahadevan 1996 - Eq. 38
@@ -192,8 +194,8 @@ class Mahadevan96:
         fedd = self.fedd
         temp = self.temp_e
 
-        f_p, l_p = self.synch_peak(fedd, self.msol, temp)
-        alpha_c, mean_amp_a, tau_es = self.compton_params(temp, fedd)
+        f_p, l_p = self._synch_peak(fedd, self.msol, temp)
+        alpha_c, mean_amp_a, tau_es = self._compton_params(temp, fedd)
         lsp = np.power(freqs/f_p, -alpha_c) * l_p
         lsp[freqs < f_p] = 0.0
 
