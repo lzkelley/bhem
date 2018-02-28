@@ -12,11 +12,20 @@ MELC_C2 = MELC * CSQ
 MPRT_C2 = MPRT * CSQ
 
 
+# where to use approximations for Bessel functions
+#    Note that the arguments to bessel functions are ~ 1/theta (the dimensionless temperatures)
+BESSEL_CUTOFF_THETA = 1.0/30.0
+
+
 def _heat_func_g(th_e):
-    t1 = 1/sp.special.kn(2, 1/th_e)
     t2 = 2 + 2*th_e + 1/th_e
-    t3 = np.exp(-1/th_e)
-    return t1*t2*t3
+
+    if th_e < BESSEL_CUTOFF_THETA:
+        t1 = np.sqrt(2/(np.pi*th_e))
+    else:
+        t1 = np.exp(-1/th_e)/sp.special.kn(2, 1/th_e)
+
+    return t1*t2
 
 
 def heating_coulomb_ie(ne, ni, te, ti):
@@ -35,10 +44,6 @@ def heating_coulomb_ie(ne, ni, te, ti):
     """
 
     NORM = 5.61e-32  # erg/cm^3/s
-
-    # where to use approximations for Bessel functions
-    #    Note that the arguments to bessel functions are ~ 1/theta (the dimensionless temperatures)
-    CUTOFF = 1.0/30.0
 
     scalar = np.isscalar(te) and np.isscalar(ti)
     if scalar:
@@ -73,24 +78,24 @@ def heating_coulomb_ie(ne, ni, te, ti):
     f3 = np.ones_like(te)
 
     # If both dimensionless-temperatures are <~ 1, use full expression
-    idx = (theta_e >= CUTOFF) & (theta_i >= CUTOFF)
+    idx = (theta_e >= BESSEL_CUTOFF_THETA) & (theta_i >= BESSEL_CUTOFF_THETA)
     f1[idx] = 1.0 / (k2e[idx] * k2i[idx])
     f2[idx] = k1r[idx]
     f3[idx] = k0r[idx]
 
     # If both dimensionless-temperatures are >> 1, use full approximation
     #    f2 and f3 are unity in this case
-    idx = (theta_e < CUTOFF) & (theta_i < CUTOFF)
+    idx = (theta_e < BESSEL_CUTOFF_THETA) & (theta_i < BESSEL_CUTOFF_THETA)
     f1[idx] = np.sqrt(2 / (np.pi * te_ti[idx]))
 
     # If electron dimensionless-temp is >> 1, approximate only that term
     #    f2 and f3 are unity in this case
-    idx = (theta_e < CUTOFF) & (theta_i >= CUTOFF)
+    idx = (theta_e < BESSEL_CUTOFF_THETA) & (theta_i >= BESSEL_CUTOFF_THETA)
     f1[idx] = np.exp(-1/theta_i[idx]) / k2i[idx]
 
     # If ion dimensionless-temp is >> 1, approximate only that term
     #    f2 and f3 are unity in this case
-    idx = (theta_e >= CUTOFF) & (theta_i < CUTOFF)
+    idx = (theta_e >= BESSEL_CUTOFF_THETA) & (theta_i < BESSEL_CUTOFF_THETA)
     f1[idx] = np.exp(-1/theta_e[idx]) / k2e[idx]
 
     amp = NORM * 2 * ne * ni * (ti - te)
