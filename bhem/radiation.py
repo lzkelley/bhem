@@ -3,13 +3,20 @@
 
 import numpy as np
 import scipy as sp
-import scipy.special
+import scipy.special  # noqa
 
-from . constants import SPLC, MELC, MPRT, K_BLTZ, RELC
+from . constants import SPLC, MELC, MPRT, K_BLTZ, QELC, H_PLNK
 
 CSQ = np.square(SPLC)
 MELC_C2 = MELC * CSQ
 MPRT_C2 = MPRT * CSQ
+
+
+def _heat_func_g(th_e):
+    t1 = 1/sp.special.kn(2, 1/th_e)
+    t2 = 2 + 2*th_e + 1/th_e
+    t3 = np.exp(-1/th_e)
+    return t1*t2*t3
 
 
 def heating_coulomb_ie(ne, ni, te, ti):
@@ -27,14 +34,20 @@ def heating_coulomb_ie(ne, ni, te, ti):
 
     """
 
-    if np.isscalar(te) or np.isscalar(ti):
-        raise ValueError("Only arrays work as temperature input ATM")
-
     NORM = 5.61e-32  # erg/cm^3/s
 
     # where to use approximations for Bessel functions
     #    Note that the arguments to bessel functions are ~ 1/theta (the dimensionless temperatures)
     CUTOFF = 1.0/30.0
+
+    scalar = np.isscalar(te) and np.isscalar(ti)
+    if scalar:
+        te = np.atleast_1d(te)
+        ti = np.atleast_1d(ti)
+    elif np.isscalar(te):
+        te = te * np.ones_like(ti)
+    elif np.isscalar(ti):
+        ti = ti * np.ones_like(te)
 
     kte = K_BLTZ * te
     kti = K_BLTZ * ti
@@ -82,15 +95,20 @@ def heating_coulomb_ie(ne, ni, te, ti):
 
     amp = NORM * 2 * ne * ni * (ti - te)
     qie = amp * f1 * (term * f2 + f3)
+
+    # Convert back to scalar
+    if scalar:
+        assert np.size(qie) == 1, "Heating should be scalar!"
+        qie = qie[0]
+
     return qie
 
 
-def cooling_brems_ei(ne, te):
-    """Cooling due to Bremsstrahlung from electron-ion scattering.
+def _brems_fit_func_f(te):
+    """Bremsstrahlung emission fitting function F(theta_e)
 
-    NY95b Eq. 3.5
+    NY95b - Eq 3.6
     """
-    NORM = 1.48e-22   # erg/cm^3/sec
     theta_e = K_BLTZ * te / MELC_C2
 
     def func_lo(th_e):
@@ -111,6 +129,16 @@ def cooling_brems_ei(ne, te):
         fei[idx] = func_lo(theta_e[idx])
         fei[~idx] = func_hi(theta_e[~idx])
 
+    return fei
+
+
+def cooling_brems_ei(ne, te):
+    """Cooling due to Bremsstrahlung from electron-ion scattering.
+
+    NY95b Eq. 3.5
+    """
+    NORM = 1.48e-22   # erg/cm^3/sec
+    fei = _brems_fit_func_f(te)
     qei = NORM * np.square(ne) * fei
     return qei
 
@@ -144,3 +172,47 @@ def cooling_brems_ee(ne, te):
         qei[~idx] = func_hi(ne[~idx], theta_e[~idx])
 
     return qei
+
+
+def dimensionless_temperature_theta(temp, mass=MELC):
+    theta = K_BLTZ * temp / (mass * SPLC * SPLC)
+    return theta
+
+
+def _synch_fit_func_iprime(xm):
+    """
+    NY95b Eq. 3.12
+    """
+    xm2 = np.power(xm, 0.5)
+    xm3 = np.power(xm, 1/3)
+    xm4 = np.sqrt(xm2)
+    xm6 = np.sqrt(xm3)
+    t1 = 4.0505/xm6
+    t2 = 1.0 + 0.4/xm4 + 0.5316/xm2
+    t3 = np.exp(-1.8899*xm3)
+    ip = t1 * t2 * t3
+    return ip
+
+
+def synchrotron_thin_spectrum(freqs, ne, te, bfield):
+    """Optically thin (unobsorbed) synchrotron spectrum.
+
+    Units of erg/cm^3/s/Hz
+
+    NY95b Eq 3.9
+    """
+    const = 4.43e-30   # erg/cm^3/s/Hz
+    theta_e = K_BLTZ * te / (MELC * SPLC * SPLC)
+    v0 = QELC * bfield / (2*np.pi*MELC*SPLC)
+    xm = 2*freqs/(3*v0*np.square(theta_e))
+    iprime = _synch_fit_func_iprime(xm)
+    esyn = const * 4*np.pi*ne*freqs*iprime/sp.special.kn(2, 1/theta_e)
+    return esyn
+
+
+def black_body_spectrum(freqs, te):
+    """Planck's Law Black-Body spectral density.
+    """
+    denom = np.exp(H_PLNK*freqs/K_BLTZ/te) - 1
+    bv = 2*H_PLNK*np.power(freqs, 3) / (SPLC*SPLC * denom)
+    return bv
