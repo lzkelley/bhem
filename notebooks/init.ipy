@@ -26,7 +26,8 @@ import bhem
 import bhem.basics
 import bhem.adaf
 import bhem.radiation
-from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC, MPRT, MELC
+import bhem.spectra
+from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC, MPRT, MELC, QELC
 
 np.seterr(over='ignore');
 
