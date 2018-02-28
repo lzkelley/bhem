@@ -9,10 +9,7 @@ Based on:
 import numpy as np
 
 from . import basics, utils
-from . constants import NWTG, YR, MSOL
-
-# Extrema in radii, in units of Schwarzschild
-# RAD_EXTR = [3.0, 1.0e4]
+from . constants import NWTG, YR, MSOL, SIGMA_SB, K_BLTZ, H_PLNK, SPLC
 
 
 class Disk:
@@ -27,7 +24,6 @@ class Disk:
         self.rmax = rmax
 
         self._init_primitives()
-
         self._calc_primitives()
 
     def __str__(self):
@@ -61,6 +57,85 @@ class Disk:
         """Radii in schwarzschild units.
         """
         return self.rads/self.rad_schw
+
+
+class Thin(Disk):
+
+    def __init__(self, mass, nrad, mdot=None, fedd=None, alpha_visc=0.1):
+        """
+        """
+
+        # Alpha-disc (Shakura-Sunyaev) viscocity parameter
+        self.alpha_visc = alpha_visc
+
+        super().__init__(mass, nrad, mdot=mdot, fedd=fedd)
+
+    def _calc_primitives(self):
+        """
+        """
+        mass = self.mass
+
+        # NY95b Eq. 2.2
+        self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
+
+        self.temp = self._calc_temp_profile()
+
+    def _calc_temp_profile(self):
+        """Temperature profile of a thin, optically thick, accretion disk.
+        """
+        mass = self.mass
+        mdot = self.mdot
+        rads = self.rads
+        rmin = self.rmin
+
+        if np.isscalar(rads):
+            temp = 3.0*NWTG*mass*mdot * (1.0 - np.sqrt(rmin/rads))
+            temp /= (8*np.pi*np.power(rads, 3.0)*SIGMA_SB)
+            temp = np.power(temp, 0.25)
+        else:
+            temp = np.zeros_like(rads)
+            idx = (rads > rmin)
+            temp[idx] = 3.0*NWTG*mass*mdot * (1.0 - np.sqrt(rmin/rads[idx]))
+            temp[idx] = temp[idx] / (8*np.pi*np.power(rads[idx], 3.0)*SIGMA_SB)
+            temp = np.power(temp, 0.25)
+
+        return temp
+
+    def _blackbody_spectral_radiance(self, rads, freqs):
+        """The blackbody spectrum of a Shakura-Sunyaev disk as a function of radius and frequency.
+
+        Returns
+        -------
+        bb : array_like
+            Blackbody spectrum as Intensity, [erg/s/Hz/cm^2/steradian]
+
+        """
+        denom = np.zeros_like(rads*freqs)
+
+        # Get the temperature profile
+        kt = np.broadcast_to(K_BLTZ * self.temp, denom.shape)
+        hv = np.broadcast_to(H_PLNK * freqs, denom.shape)
+
+        idx = (kt > 0.0)
+        denom[idx] = (np.square(SPLC) * (np.exp(hv[idx]/kt[idx]) - 1.0))
+        numer = np.broadcast_to(2.0 * H_PLNK * np.power(freqs, 3.0), denom.shape)
+        idx = (denom > 0.0)
+
+        bb = np.zeros_like(denom)
+        bb[idx] = numer[idx] / denom[idx]
+        return bb
+
+    def blackbody_spectral_luminosity(self, freqs):
+        """
+        """
+        rads = self.rads
+        bb_spec_rad = self._blackbody_spectral_radiance(rads[np.newaxis, :], freqs[:, np.newaxis])
+
+        # Integrate over annuli
+        annul = np.pi * (np.square(rads[1:]) - np.square(rads[:-1]))
+        ave_spec = 0.5 * (bb_spec_rad[:, 1:] + bb_spec_rad[:, :-1])
+        bb_lum = 4.0*np.pi * np.sum(ave_spec * annul[np.newaxis, :], axis=-1)
+        return bb_lum
 
 
 class ADAF(Disk):
