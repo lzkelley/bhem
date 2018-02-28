@@ -9,19 +9,22 @@ Based on:
 import numpy as np
 
 from . import basics, utils
-from . constants import SPLC, NWTG, YR, MSOL, MAMU
+from . constants import NWTG, YR, MSOL
 
 # Extrema in radii, in units of Schwarzschild
-RAD_EXTR = [1.0, 1.0e4]
+# RAD_EXTR = [3.0, 1.0e4]
 
 
 class Disk:
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None):
+    def __init__(self, mass, nrad, mdot=None, fedd=None, rmin=3.0, rmax=1000.0):
         self.mass = mass
         self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
+        self.ms = mass/MSOL
         self.nrad = nrad
         self.rad_schw = basics.radius_schwarzschild(mass)
+        self.rmin = rmin
+        self.rmax = rmax
 
         self._init_primitives()
 
@@ -29,14 +32,14 @@ class Disk:
 
     def __str__(self):
         rv = "Mass: {:.2e} [Msol]\nMdot: {:.1e} [Msol/yr],  Fedd: {:.1e}".format(
-            self.mass/MSOL, self.mdot*YR/MSOL, self.fedd)
+            self.ms, self.mdot*YR/MSOL, self.fedd)
         return rv
 
     def _init_primitives(self):
         nrad = self.nrad
 
         # Radii
-        self.rads = np.logspace(*np.log10(RAD_EXTR), nrad) * self.rad_schw
+        self.rads = np.logspace(*np.log10([self.rmin, self.rmax]), nrad) * self.rad_schw
         # Density
         self.dens = np.zeros(nrad)
         # Free-fall (dynamical) velocity
