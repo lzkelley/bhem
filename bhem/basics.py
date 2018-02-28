@@ -5,7 +5,7 @@ import numpy as np
 # import scipy as sp
 # import scipy.integrate
 
-from . import constants
+# from . import constants
 from . constants import NWTG, SIGMA_SB, SPLC, SIGMA_T, MPRT, H_PLNK, K_BLTZ
 
 _SCHW_CONST = 2.0*NWTG/np.square(SPLC)          # for Schwarzschild radius
