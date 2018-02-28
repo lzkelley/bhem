@@ -1,6 +1,8 @@
 """Constant parameters.
 """
 
+import numpy as np
+
 from collections import namedtuple
 
 # Stefan-Boltzmann constant
@@ -23,6 +25,9 @@ MPRT = 1.672621898e-24        # gram
 
 # Electron Mass
 MELC = 9.10938356e-28        # gram
+
+# Electron charge
+QELC = 4.80320467299766e-10   # esu / Fr
 
 # Planck's constant
 H_PLNK = 6.62607004e-27       # erg sec
@@ -50,3 +55,6 @@ BANDS = {nn: Band(nn, SPLC/(ll*1e-7), ll*1e-7, cc)
 
 # Electron-Scattering (Thomson) Opacity
 KAPPA_ES = SIGMA_T / MPRT     # cm^2 / gram
+
+# Classical Electron Radius
+RELC = np.square(QELC/SPLC) / MELC
