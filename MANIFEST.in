@@ -1,0 +1,5 @@
+include MANIFEST.in
+include *.txt *.rst *.md
+include setup.sh setup.py
+
+global-exclude *.pyc
