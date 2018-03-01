@@ -7,6 +7,9 @@ A description of the basic file structure and the changes in each version can be
 Bugs, suggestions and improvements are welcome through the [github page (github.com/lzkelley/bhem)](https://github.com/lzkelley/bhem).
 
 
+![Spectra as a function of accretion rate](./docs/media/spectra.png)
+
+
 ## Installation from Source
 - Open a terminal, move to the directory where you want to install the code.
 - Clone the source repository: `$ git clone git@github.com:lzkelley/bhem.git`
