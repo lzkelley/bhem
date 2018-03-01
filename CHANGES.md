@@ -1,8 +1,10 @@
 # BH EM - Change-Log
 
 ## Future / To-Do
-    -   General
-    -   `bhem/`
+    - General
+        - Implement a full, radial ADAF spectral calculation by solving the heating/cooling equations as a function of radius (instead of integrated quantities as in Mahadevan 1996).
+
+    - `bhem/`
 
 
 ## Current
