@@ -1,6 +1,8 @@
 """
 """
 
+import warnings
+
 import numpy as np
 import scipy as sp
 
@@ -38,16 +40,38 @@ class Mahadevan96:
         return
 
     def _solve(self):
-        def _func(tt):
+        def _func(logt):
+            tt = np.power(10.0, logt)
             qv, qs, qb, qc = self._heat_cool(tt)
             rv = qv - (qs + qb + qc)
             return rv
 
-        try:
-            self.temp_e = sp.optimize.newton(_func, 1e11)
-        except RuntimeError as err:
-            print("WARNING: First optimization failed: ", err)
-            self.temp_e = sp.optimize.newton(_func, 1e10)
+        start_temps = [1e11, 1e10, 1e12, 1e9]
+        success = False
+        for ii, t0 in enumerate(start_temps):
+            try:
+                logt = sp.optimize.newton(_func, np.log10(t0))
+                self.temp_e = np.power(10.0, logt)
+            except RuntimeError as err:
+                print("WARNING: Trial '{}' optimization failed: {}".format(ii, str(err)))
+            else:
+                success = True
+                break
+
+        if not success:
+            raise RuntimeError("Unable to find electron temperature!"
+                               "\nIf the eddington factor is larger than 1e-2, "
+                               "this may be expected!")
+
+        qv, qs, qb, qc = self._heat_cool(self.temp_e)
+        heat = qv
+        cool = qs + qb + qc
+        diff = np.fabs(heat - cool) / heat
+        if diff > 1e-2:
+            err = "Electron temperature seems inconsistent!"
+            err += "\n\tHeating: {:.2e}, Cooling: {:.2e}, diff: {:.4e}".format(heat, cool, diff)
+            err += "\n\tThis may mean there is an input error (e.g. mdot may be too large)."
+            warnings.warn(err, RuntimeWarning)
 
         self.theta_e = radiation.dimensionless_temperature_theta(self.temp_e, MELC)
         print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
