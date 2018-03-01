@@ -3,6 +3,7 @@
 ## Future / To-Do
     - General
         - Implement a full, radial ADAF spectral calculation by solving the heating/cooling equations as a function of radius (instead of integrated quantities as in Mahadevan 1996).
+        - Consider reddening / obscuration.  How much would this modify spectra for typical parameters?
 
     - `bhem/`
 
