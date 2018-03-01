@@ -20,3 +20,15 @@ With the git `upstream branch` setup, you can [update your code simply](https://
 - Switch to the 'master' (or target) branch: `git checkout master`
 - Merge in changes: `git merge upstream/master`
 - Re-install the package: `pip install -e .`
+
+
+## References
+- [SS97]: **Shakura & Sunyaev 1977** - [1973A&A....24..337S](http://adsabs.harvard.edu/abs/1973A%26A....24..337S)
+- [NY95a]: **Narayan & Yi 1995a** - [1995ApJ...444..231N](http://adsabs.harvard.edu/abs/1995ApJ...444..231N)
+    - First detailed derivation of the "ADAF" solution, self-similar radial profiles.
+- [NY95b]: **Narayan & Yi 1995b** - [1995ApJ...452..710N](http://adsabs.harvard.edu/abs/1995ApJ...452..710N)
+    - Expansion on [NY95b] including heating/cooling sources and simple spectral models.
+- [M96]: **Mahadevan 1997** - [1997ApJ...477..585M](http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:astro-ph/9609107)
+    - Simplified spectral models based on NY95b, but considering integrated quantities over the whole disk to get 'characteristic' quantities and spectra.
+    - Also includes numerous numerical tricks for easily calculating relevant quantities.
+- [QN98]: **Quataert & Narayan 1998** - [1999ApJ...520..298Q](http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:astro-ph/9810136)
