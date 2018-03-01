@@ -29,6 +29,7 @@
         - `utils.py`
             - Contains methods for simple logistical operations of general use.
 
+
 ## [0.1] - 2018/03/01
     - Basic, working models of both ADAF and Thin (Shakura-Sunyaev) accretion disks.
         - Each are implemented as separated classes in the `disks.py` file.
