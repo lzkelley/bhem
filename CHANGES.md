@@ -1,8 +1,11 @@
 # BH EM - Change-Log
 
 ## Future / To-Do
-    -   General
-    -   `bhem/`
+    - General
+        - Implement a full, radial ADAF spectral calculation by solving the heating/cooling equations as a function of radius (instead of integrated quantities as in Mahadevan 1996).
+        - Consider reddening / obscuration.  How much would this modify spectra for typical parameters?
+
+    - `bhem/`
 
 
 ## Current
@@ -25,6 +28,7 @@
                 - Class for calculating simple analytic spectra from an ADAF disk.
         - `utils.py`
             - Contains methods for simple logistical operations of general use.
+
 
 ## [0.1] - 2018/03/01
     - Basic, working models of both ADAF and Thin (Shakura-Sunyaev) accretion disks.

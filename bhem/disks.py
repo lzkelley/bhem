@@ -245,15 +245,6 @@ class ADAF(Disk):
         molw_ion = 4 / (1 + 3*x_hmass)
         molw_elec = 2 / (1 + x_hmass)
 
-        '''
-        print("eps = {:.4e}".format(eps))
-        print("eps_prime = {:.4e}".format(eps_prime))
-        print("gae = {:.4e}".format(gae))
-        print("c1 = {:.4e}".format(c1))
-        print("c2 = {:.4e}".format(c2))
-        print("c3 = {:.4e}".format(c3))
-        '''
-
         # Store
         self._gae = gae
         self._eps = eps
