@@ -52,7 +52,7 @@ class Mahadevan96:
             try:
                 logt = sp.optimize.newton(_func, np.log10(t0))
                 self.temp_e = np.power(10.0, logt)
-            except RuntimeError as err:
+            except (RuntimeError, FloatingPointError) as err:
                 print("WARNING: Trial '{}' optimization failed: {}".format(ii, str(err)))
             else:
                 success = True
