@@ -74,8 +74,8 @@ class Mahadevan96:
             warnings.warn(err, RuntimeWarning)
 
         self.theta_e = radiation.dimensionless_temperature_theta(self.temp_e, MELC)
-        print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
-            self.temp_e, self.theta_e))
+        # print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
+        #     self.temp_e, self.theta_e))
         self._xm_e = xm_from_te(self.temp_e, self.msol, self.fedd)
         self._s2 = self._const_s2(self._xm_e)
 

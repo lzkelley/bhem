@@ -14,7 +14,7 @@ except FileNotFoundError as err:
     warnings.warn("Error loading version file '{}'!  '{}'".format(vpath, str(err)), RuntimeWarning)
     __version__ = "v?.?.?"
 
-from . import constants
-from . import basics
+from . import disks
+from . import spectra
 
 from . constants import *
