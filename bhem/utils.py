@@ -17,6 +17,12 @@ def log_interp1d(xx, yy, kind='linear', **kwargs):
     return log_interp
 
 
+def log_midpoints(arr):
+    mid = 0.5 * (np.log10(arr[1:]) + np.log10(arr[:-1]))
+    mid = np.power(10.0, mid)
+    return mid
+
+
 def mdot_fedd(mass, mdot, fedd, raise_error=True):
     """Make sure that `mdot` and `fedd` are set.
 
