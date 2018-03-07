@@ -24,6 +24,7 @@ if par_dir not in sys.path:
 
 import bhem
 import bhem.basics
+import bhem.utils
 import bhem.disks
 import bhem.radiation
 import bhem.spectra
