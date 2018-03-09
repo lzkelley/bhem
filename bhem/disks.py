@@ -24,6 +24,10 @@ class Disk:
         self.rmax = rmax
 
         self._init_primitives()
+
+        # NY95b Eq. 2.2
+        self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
+
         self._calc_primitives()
 
     def __str__(self):
@@ -45,8 +49,8 @@ class Disk:
         raise RuntimeError("This function must be overwritten")
 
     @property
-    def vel_kep(self):
-        """Keplerian velocity profile.
+    def freq_kep(self):
+        """Keplerian frequency (i.e. angular-velocity) profile.
 
         NY95a Eq. 2.3
         """
@@ -57,6 +61,22 @@ class Disk:
         """Radii in schwarzschild units.
         """
         return self.rads/self.rad_schw
+
+    @property
+    def viscocity_kinematic(self):
+        """Kinematic viscocity parameter, based on alpha-viscocity assumption.
+        """
+        try:
+            alpha = self.alpha
+            cs = self.vel_sound
+            omega_k = self.freq_kep
+        except AttributeError as err:
+            estr = "Viscocity requires an `alpha`, `vel_sound` and `freq_kep`!  '{}'".format(
+                str(err))
+            raise AttributeError(estr)
+
+        nu_alpha = alpha * np.square(cs/omega_k)
+        return nu_alpha
 
 
 class Thin(Disk):
@@ -218,6 +238,20 @@ class ADAF(Disk):
         qplus *= np.square(self.vel_snd) / (2 * self.rads)
         return qplus
 
+    @property
+    def time_orb(self):
+        """Orbital time (i.e. orbital period).
+        """
+        return 1.0/self.freq_kep
+
+    @property
+    def time_visc(self):
+        """Viscous timescale.
+        """
+        nu_alpha = self.viscocity_kinematic()
+        tvisc = self.rads/nu_alpha
+        return tvisc
+
     def _calc_primitives(self):
         """
 
@@ -255,8 +289,6 @@ class ADAF(Disk):
         self.molw_ion = molw_ion
         self.molw_elec = molw_elec
 
-        # NY95b Eq. 2.2
-        self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
         # NY95b Eq. 2.1
         self.vel_rad[:] = - c1 * alpha * self.vel_ff[:]
 
