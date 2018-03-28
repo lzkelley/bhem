@@ -14,7 +14,27 @@ from . constants import NWTG, YR, MSOL, SIGMA_SB, K_BLTZ, H_PLNK, SPLC
 
 class Disk:
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None, rmin=3.0, rmax=1000.0):
+    def __init__(self, mass, mdot=None, fedd=None, nrad=100, rmin=3.0, rmax=1000.0):
+        """
+
+        Arguments
+        ---------
+        mass : scalar
+            Mass of central object.  [grams]
+        mdot : scalar or `None`
+            Mass accretion rate.  [grams/sec]
+            `mdot` or `fedd` must be provided.
+        fedd : scalar or `None`
+            Eddington ratio.
+            `fedd` or `mdot` must be provided.
+        nrad : int
+            Number of radial elements.
+        rmin : scalar
+            Minimum radius of disk [Schwarzschild radii].
+        rmax : scalar
+            Maximum radius of disk [Schwarzschild radii].
+
+        """
         self.mass = mass
         self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
         self.ms = mass/MSOL
@@ -81,14 +101,14 @@ class Disk:
 
 class Thin(Disk):
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None, alpha_visc=0.1):
+    def __init__(self, mass, alpha_visc=0.1, **kwargs):
         """
         """
 
         # Alpha-disc (Shakura-Sunyaev) viscocity parameter
         self.alpha_visc = alpha_visc
 
-        super().__init__(mass, nrad, mdot=mdot, fedd=fedd)
+        super().__init__(mass, **kwargs)
 
     def _calc_primitives(self):
         """
@@ -160,8 +180,7 @@ class Thin(Disk):
 
 class ADAF(Disk):
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None,
-                 alpha_visc=0.1, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75):
+    def __init__(self, mass, alpha_visc=0.1, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75, **kwargs):
         """
         """
 
@@ -178,7 +197,7 @@ class ADAF(Disk):
         # Hydrogen mass fraction X
         self.frac_hmass = frac_hmass
 
-        super().__init__(mass, nrad, mdot=mdot, fedd=fedd)
+        super().__init__(mass, **kwargs)
 
     @property
     def vel_rad(self):

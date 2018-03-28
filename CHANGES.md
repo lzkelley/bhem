@@ -16,6 +16,7 @@
             - Store numerical and physical constants.
         - `disks.py`
             - Classes for different disk models.
+            - Only require `mass` and either `mdot` or `fedd` for disks.  Use `**kwargs`.
             - `Thin`
                 - Shakura-Sunyaev disk-model, with associated black-body-like spectrum.
             - `ADAF`
@@ -28,6 +29,7 @@
                 - Class for calculating simple analytic spectra from an ADAF disk.
         - `utils.py`
             - Contains methods for simple logistical operations of general use.
+            
     - `notebooks/`
         - `adaf.ipynb`
             - Examine ADAF disk structure and spectra
