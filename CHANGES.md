@@ -35,6 +35,7 @@
             - Examine ADAF disk structure and spectra
         - `shakura-sunyaev.ipynb`
             - Examine thin (Shakura-Sunyaev) disk structure and spectra
+            - Plot spectra for different rmax
         - `bhem.ipynb`
             - Comparisons between both disk models
 

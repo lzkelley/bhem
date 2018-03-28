@@ -14,7 +14,8 @@ from . constants import NWTG, YR, MSOL, SIGMA_SB, K_BLTZ, H_PLNK, SPLC
 
 class Disk:
 
-    def __init__(self, mass, mdot=None, fedd=None, nrad=100, rmin=3.0, rmax=1000.0):
+    def __init__(self, mass, alpha_visc=0.1, mdot=None, fedd=None,
+                 nrad=100, rmin=3.0, rmax=1000.0):
         """
 
         Arguments
@@ -44,6 +45,9 @@ class Disk:
         self.rmax = rmax
 
         self._init_primitives()
+
+        # Alpha-disc (Shakura-Sunyaev) viscocity parameter
+        self.alpha_visc = alpha_visc
 
         # NY95b Eq. 2.2
         self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
@@ -101,12 +105,12 @@ class Disk:
 
 class Thin(Disk):
 
-    def __init__(self, mass, alpha_visc=0.1, **kwargs):
+    def __init__(self, mass, **kwargs):
         """
         """
 
         # Alpha-disc (Shakura-Sunyaev) viscocity parameter
-        self.alpha_visc = alpha_visc
+        # self.alpha_visc = alpha_visc
 
         super().__init__(mass, **kwargs)
 
@@ -180,12 +184,12 @@ class Thin(Disk):
 
 class ADAF(Disk):
 
-    def __init__(self, mass, alpha_visc=0.1, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75, **kwargs):
+    def __init__(self, mass, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75, **kwargs):
         """
         """
 
-        # Alpha-disc (Shakura-Sunyaev) viscocity parameter
-        self.alpha_visc = alpha_visc
+        # # Alpha-disc (Shakura-Sunyaev) viscocity parameter
+        # self.alpha_visc = alpha_visc
         # Fraction of viscously dissipated energy which is advected
         self.frac_adv = frac_adv
         # Gas to total pressure fraction (p_g = beta * p)
