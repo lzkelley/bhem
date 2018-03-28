@@ -28,6 +28,14 @@
                 - Class for calculating simple analytic spectra from an ADAF disk.
         - `utils.py`
             - Contains methods for simple logistical operations of general use.
+    - `notebooks/`
+        - `adaf.ipynb`
+            - Examine ADAF disk structure and spectra
+        - `shakura-sunyaev.ipynb`
+            - Examine thin (Shakura-Sunyaev) disk structure and spectra
+        - `bhem.ipynb`
+            - Comparisons between both disk models
+
 
 
 ## [0.1] - 2018/03/01
