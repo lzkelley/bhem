@@ -28,7 +28,7 @@ import bhem.utils
 import bhem.disks
 import bhem.radiation
 import bhem.spectra
-from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC, MPRT, MELC, QELC, BANDS
+from bhem.constants import MSOL, H_PLNK, K_BLTZ, SPLC, MPRT, MELC, QELC, BANDS, SIGMA_SB, NWTG
 
 np.seterr(over='ignore');
 
