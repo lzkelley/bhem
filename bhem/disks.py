@@ -36,6 +36,10 @@ class Disk:
             Maximum radius of disk [Schwarzschild radii].
 
         """
+
+        if rmax <= rmin:
+            raise ValueError("`rmin` ({}) cannot exceed `rmax` ({})!".format(rmin, rmax))
+
         self.mass = mass
         self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
         self.ms = mass/MSOL
@@ -63,6 +67,8 @@ class Disk:
         nrad = self.nrad
 
         # Radii
+        # print("rmin, rmax = ", self.rmin, self.rmax, nrad)
+        # print("rs = ", self.rad_schw)
         self.rads = np.logspace(*np.log10([self.rmin, self.rmax]), nrad) * self.rad_schw
         # Density
         self.dens = np.zeros(nrad)
@@ -173,12 +179,19 @@ class Thin(Disk):
         """
         """
         rads = self.rads
+
+        scalar = np.isscalar(freqs)
+        freqs = np.atleast_1d(freqs)
+
         bb_spec_rad = self._blackbody_spectral_radiance(rads[np.newaxis, :], freqs[:, np.newaxis])
 
         # Integrate over annuli
         annul = np.pi * (np.square(rads[1:]) - np.square(rads[:-1]))
         ave_spec = 0.5 * (bb_spec_rad[:, 1:] + bb_spec_rad[:, :-1])
         bb_lum = 4.0*np.pi * np.sum(ave_spec * annul[np.newaxis, :], axis=-1)
+        if scalar:
+            bb_lum = np.squeeze(bb_lum)
+
         return bb_lum
 
 
