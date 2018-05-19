@@ -9,6 +9,9 @@
 
 
 ## Current
+
+
+## [0.2] - 2018/05/19
     - Allow frequency arguments to be scalar instead of arrays.
 
     - `bhem/`
