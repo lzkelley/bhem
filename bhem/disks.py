@@ -14,7 +14,32 @@ from . constants import NWTG, YR, MSOL, SIGMA_SB, K_BLTZ, H_PLNK, SPLC
 
 class Disk:
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None, rmin=3.0, rmax=1000.0):
+    def __init__(self, mass, alpha_visc=0.1, mdot=None, fedd=None,
+                 nrad=100, rmin=3.0, rmax=1000.0):
+        """
+
+        Arguments
+        ---------
+        mass : scalar
+            Mass of central object.  [grams]
+        mdot : scalar or `None`
+            Mass accretion rate.  [grams/sec]
+            `mdot` or `fedd` must be provided.
+        fedd : scalar or `None`
+            Eddington ratio.
+            `fedd` or `mdot` must be provided.
+        nrad : int
+            Number of radial elements.
+        rmin : scalar
+            Minimum radius of disk [Schwarzschild radii].
+        rmax : scalar
+            Maximum radius of disk [Schwarzschild radii].
+
+        """
+
+        if rmax <= rmin:
+            raise ValueError("`rmin` ({}) cannot exceed `rmax` ({})!".format(rmin, rmax))
+
         self.mass = mass
         self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
         self.ms = mass/MSOL
@@ -24,6 +49,13 @@ class Disk:
         self.rmax = rmax
 
         self._init_primitives()
+
+        # Alpha-disc (Shakura-Sunyaev) viscocity parameter
+        self.alpha_visc = alpha_visc
+
+        # NY95b Eq. 2.2
+        self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
+
         self._calc_primitives()
 
     def __str__(self):
@@ -35,6 +67,8 @@ class Disk:
         nrad = self.nrad
 
         # Radii
+        # print("rmin, rmax = ", self.rmin, self.rmax, nrad)
+        # print("rs = ", self.rad_schw)
         self.rads = np.logspace(*np.log10([self.rmin, self.rmax]), nrad) * self.rad_schw
         # Density
         self.dens = np.zeros(nrad)
@@ -45,8 +79,8 @@ class Disk:
         raise RuntimeError("This function must be overwritten")
 
     @property
-    def vel_kep(self):
-        """Keplerian velocity profile.
+    def freq_kep(self):
+        """Keplerian frequency (i.e. angular-velocity) profile.
 
         NY95a Eq. 2.3
         """
@@ -58,17 +92,33 @@ class Disk:
         """
         return self.rads/self.rad_schw
 
+    @property
+    def viscocity_kinematic(self):
+        """Kinematic viscocity parameter, based on alpha-viscocity assumption.
+        """
+        try:
+            alpha = self.alpha
+            cs = self.vel_sound
+            omega_k = self.freq_kep
+        except AttributeError as err:
+            estr = "Viscocity requires an `alpha`, `vel_sound` and `freq_kep`!  '{}'".format(
+                str(err))
+            raise AttributeError(estr)
+
+        nu_alpha = alpha * np.square(cs/omega_k)
+        return nu_alpha
+
 
 class Thin(Disk):
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None, alpha_visc=0.1):
+    def __init__(self, mass, **kwargs):
         """
         """
 
         # Alpha-disc (Shakura-Sunyaev) viscocity parameter
-        self.alpha_visc = alpha_visc
+        # self.alpha_visc = alpha_visc
 
-        super().__init__(mass, nrad, mdot=mdot, fedd=fedd)
+        super().__init__(mass, **kwargs)
 
     def _calc_primitives(self):
         """
@@ -129,24 +179,30 @@ class Thin(Disk):
         """
         """
         rads = self.rads
+
+        scalar = np.isscalar(freqs)
+        freqs = np.atleast_1d(freqs)
+
         bb_spec_rad = self._blackbody_spectral_radiance(rads[np.newaxis, :], freqs[:, np.newaxis])
 
         # Integrate over annuli
         annul = np.pi * (np.square(rads[1:]) - np.square(rads[:-1]))
         ave_spec = 0.5 * (bb_spec_rad[:, 1:] + bb_spec_rad[:, :-1])
         bb_lum = 4.0*np.pi * np.sum(ave_spec * annul[np.newaxis, :], axis=-1)
+        if scalar:
+            bb_lum = np.squeeze(bb_lum)
+
         return bb_lum
 
 
 class ADAF(Disk):
 
-    def __init__(self, mass, nrad, mdot=None, fedd=None,
-                 alpha_visc=0.1, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75):
+    def __init__(self, mass, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75, **kwargs):
         """
         """
 
-        # Alpha-disc (Shakura-Sunyaev) viscocity parameter
-        self.alpha_visc = alpha_visc
+        # # Alpha-disc (Shakura-Sunyaev) viscocity parameter
+        # self.alpha_visc = alpha_visc
         # Fraction of viscously dissipated energy which is advected
         self.frac_adv = frac_adv
         # Gas to total pressure fraction (p_g = beta * p)
@@ -158,7 +214,7 @@ class ADAF(Disk):
         # Hydrogen mass fraction X
         self.frac_hmass = frac_hmass
 
-        super().__init__(mass, nrad, mdot=mdot, fedd=fedd)
+        super().__init__(mass, **kwargs)
 
     @property
     def vel_rad(self):
@@ -218,6 +274,20 @@ class ADAF(Disk):
         qplus *= np.square(self.vel_snd) / (2 * self.rads)
         return qplus
 
+    @property
+    def time_orb(self):
+        """Orbital time (i.e. orbital period).
+        """
+        return 1.0/self.freq_kep
+
+    @property
+    def time_visc(self):
+        """Viscous timescale.
+        """
+        nu_alpha = self.viscocity_kinematic()
+        tvisc = self.rads/nu_alpha
+        return tvisc
+
     def _calc_primitives(self):
         """
 
@@ -255,8 +325,6 @@ class ADAF(Disk):
         self.molw_ion = molw_ion
         self.molw_elec = molw_elec
 
-        # NY95b Eq. 2.2
-        self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
         # NY95b Eq. 2.1
         self.vel_rad[:] = - c1 * alpha * self.vel_ff[:]
 

@@ -12,10 +12,11 @@ from . constants import MELC, MPRT, SPLC, K_BLTZ, H_PLNK
 
 class Mahadevan96:
 
-    def __init__(self, adaf, freqs):
+    def __init__(self, adaf, freqs, verbose=True):
         """
         """
         self.freqs = freqs
+        self._verbose = verbose
 
         # Mass in units of solar=masses
         self.msol = adaf.ms
@@ -50,28 +51,35 @@ class Mahadevan96:
         success = False
         for ii, t0 in enumerate(start_temps):
             try:
-                logt = sp.optimize.newton(_func, np.log10(t0))
+                logt = sp.optimize.newton(_func, np.log10(t0), tol=1e-4, maxiter=100)
                 self.temp_e = np.power(10.0, logt)
             except (RuntimeError, FloatingPointError) as err:
-                print("WARNING: Trial '{}' optimization failed: {}".format(ii, str(err)))
+                if self._verbose:
+                    print("WARNING: Trial '{}' optimization failed: {}".format(ii, str(err)))
             else:
                 success = True
                 break
 
         if not success:
-            raise RuntimeError("Unable to find electron temperature!"
-                               "\nIf the eddington factor is larger than 1e-2, "
-                               "this may be expected!")
+            warnings.warn("m = {:.2e}, f = {:.2e}".format(self.msol, self.fedd))
+            err = ("Unable to find electron temperature!"
+                   "\nIf the eddington factor is larger than 1e-2, "
+                   "this may be expected!")
+            raise RuntimeError(err)
+            # warnings.warn(err)
+            # return
 
         qv, qs, qb, qc = self._heat_cool(self.temp_e)
         heat = qv
         cool = qs + qb + qc
         diff = np.fabs(heat - cool) / heat
         if diff > 1e-2:
-            err = "Electron temperature seems inconsistent!"
+            err = "Electron temperature seems inconsistent (Te = {:.2e})!".format(self.temp_e)
+            err += "\n\tm: {:.2e}, f: {:.2e}".format(self.msol, self.fedd)
             err += "\n\tHeating: {:.2e}, Cooling: {:.2e}, diff: {:.4e}".format(heat, cool, diff)
             err += "\n\tThis may mean there is an input error (e.g. mdot may be too large)."
-            warnings.warn(err, RuntimeWarning)
+            if self._verbose:
+                warnings.warn(err, RuntimeWarning)
 
         self.theta_e = radiation.dimensionless_temperature_theta(self.temp_e, MELC)
         # print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
@@ -188,12 +196,18 @@ class Mahadevan96:
         msol = self.msol
         fedd = self.fedd
 
+        scalar = np.isscalar(freqs)
+        freqs = np.atleast_1d(freqs)
+
         lnu = self._s3 * np.power(self._s1*self._s2, 1.6)
         lnu *= np.power(msol, 1.2) * np.power(fedd, 0.8)
         lnu *= np.power(self.temp_e, 4.2) * np.power(freqs, 0.4)
 
         nu_p = self._freq_synch_peak(self.temp_e, msol, fedd, s2=self._s2)
         lnu[freqs > nu_p] = 0.0
+        if scalar:
+            lnu = np.squeeze(lnu)
+
         return lnu
 
     def _calc_spectrum_brems(self, freqs):
@@ -204,10 +218,16 @@ class Mahadevan96:
         temp = self.temp_e
         const = 2.29e24   # erg/s/Hz
 
+        scalar = np.isscalar(freqs)
+        freqs = np.atleast_1d(freqs)
+
         t1 = np.log(self._rmax/self._rmin) / np.square(self._alpha * self._c1)
         t2 = np.exp(-H_PLNK*freqs / (K_BLTZ * temp)) * msol * np.square(fedd) / temp
         fe = radiation._brems_fit_func_f(temp)
         lbrems = const * t1 * fe * t2
+        if scalar:
+            lbrems = np.squeeze(lbrems)
+
         return lbrems
 
     def _calc_spectrum_compt(self, freqs):
@@ -218,6 +238,9 @@ class Mahadevan96:
         fedd = self.fedd
         temp = self.temp_e
 
+        scalar = np.isscalar(freqs)
+        freqs = np.atleast_1d(freqs)
+
         f_p, l_p = self._synch_peak(fedd, self.msol, temp)
         alpha_c, mean_amp_a, tau_es = self._compton_params(temp, fedd)
         lsp = np.power(freqs/f_p, -alpha_c) * l_p
@@ -226,6 +249,8 @@ class Mahadevan96:
         # See Eq. 35
         max_freq = 3*K_BLTZ*temp/H_PLNK
         lsp[freqs > max_freq] = 0.0
+        if scalar:
+            lsp = np.squeeze(lsp)
 
         return lsp
 

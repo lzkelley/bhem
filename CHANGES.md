@@ -9,6 +9,11 @@
 
 
 ## Current
+
+
+## [0.2] - 2018/05/19
+    - Allow frequency arguments to be scalar instead of arrays.
+
     - `bhem/`
         - `basics.py`
             - Contains methods for simple physical calculations and operations.
@@ -16,6 +21,9 @@
             - Store numerical and physical constants.
         - `disks.py`
             - Classes for different disk models.
+            - Only require `mass` and either `mdot` or `fedd` for disks.  Use `**kwargs`.
+            - Raise error if `rmin` exceeds or equals `rmax`.
+            - Allow frequency arguments to be scalar instead of arrays.
             - `Thin`
                 - Shakura-Sunyaev disk-model, with associated black-body-like spectrum.
             - `ADAF`
@@ -24,10 +32,21 @@
             - Methods for general radiation/emission calculations.
         - `spectra.py`
             - Classes for spectral calculations.  Currently only `Mahadevan96` for ADAF spectral calculations.
+            - Allow frequency arguments to be scalar values instead of arrays
             - `Mahadevan96`
                 - Class for calculating simple analytic spectra from an ADAF disk.
         - `utils.py`
             - Contains methods for simple logistical operations of general use.
+            
+    - `notebooks/`
+        - `adaf.ipynb`
+            - Examine ADAF disk structure and spectra
+        - `shakura-sunyaev.ipynb`
+            - Examine thin (Shakura-Sunyaev) disk structure and spectra
+            - Plot spectra for different rmax
+        - `bhem.ipynb`
+            - Comparisons between both disk models
+
 
 
 ## [0.1] - 2018/03/01
