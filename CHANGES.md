@@ -23,7 +23,7 @@
             - Classes for different disk models.
             - Only require `mass` and either `mdot` or `fedd` for disks.  Use `**kwargs`.
             - Raise error if `rmin` exceeds or equals `rmax`.
-            - Allow freqeuncy arguments to be scalar instead of arrays.
+            - Allow frequency arguments to be scalar instead of arrays.
             - `Thin`
                 - Shakura-Sunyaev disk-model, with associated black-body-like spectrum.
             - `ADAF`
