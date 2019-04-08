@@ -1,22 +1,25 @@
 """
 """
-
-import warnings
+import logging
+# import warnings
 
 import numpy as np
 import scipy as sp
 
-from . import radiation
+from . import radiation, utils
 from . constants import MELC, MPRT, SPLC, K_BLTZ, H_PLNK
 
 
 class Mahadevan96:
 
-    def __init__(self, adaf, freqs, verbose=True):
+    def __init__(self, adaf, freqs, log=30, backup_temp=None):
         """
         """
+        if not isinstance(log, logging.Logger):
+            log = utils.get_log(level=log)
+
         self.freqs = freqs
-        self._verbose = verbose
+        self._log = log
 
         # Mass in units of solar=masses
         self.msol = adaf.ms
@@ -36,50 +39,79 @@ class Mahadevan96:
         # s2 = 1.19e-13 * xm_char
         self._s3 = 1.05e-24
 
+        self._pars = ["alpha", "beta", "eps_prime", "delta", "c1", "c3", "rmin", "rmax"]
+
+        self._backup_temp = backup_temp
+
         # Find the electron temperature and calculate spectra
         self._solve()
         return
 
+    def __str__(self):
+        rv = "Mahadevan96(msol={:.4e}, fedd={:.4e}".format(self.msol, self.fedd)
+        for pp in self._pars:
+            vv = getattr(self, "_" + pp)
+            rv += ", {}={:.3e}".format(pp, vv)
+
+        rv += ")"
+        return rv
+
     def _solve(self):
+        log = self._log
+
         def _func(logt):
             tt = np.power(10.0, logt)
             qv, qs, qb, qc = self._heat_cool(tt)
             rv = qv - (qs + qb + qc)
             return rv
 
-        start_temps = [1e11, 1e10, 1e12, 1e9]
+        start_temps = [1e11, 1e10, 1e12, 1e9, 1e8]
         success = False
         for ii, t0 in enumerate(start_temps):
+            log.debug("Try {}, temp: {:.1e}".format(ii, t0))
             try:
                 logt = sp.optimize.newton(_func, np.log10(t0), tol=1e-4, maxiter=100)
                 self.temp_e = np.power(10.0, logt)
             except (RuntimeError, FloatingPointError) as err:
-                if self._verbose:
-                    print("WARNING: Trial '{}' optimization failed: {}".format(ii, str(err)))
+                log.debug("WARNING: Trial '{}' (t={:.1e}) optimization failed: {}".format(
+                    ii, t0, str(err)))
             else:
                 success = True
                 break
 
-        if not success:
-            warnings.warn("m = {:.2e}, f = {:.2e}".format(self.msol, self.fedd))
+        if success:
+            log.debug("Success with `t0`={:.2e} ==> t={:.2e}".format(t0, self.temp_e))
+        else:
+            log.error("FAILED to find electron temperature!")
+            log.error(str(self))
+            log.error("m = {:.2e}, f = {:.2e}".format(self.msol, self.fedd))
             err = ("Unable to find electron temperature!"
                    "\nIf the eddington factor is larger than 1e-2, "
                    "this may be expected!")
-            raise RuntimeError(err)
-            # warnings.warn(err)
-            # return
+            if self._backup_temp is None:
+                raise RuntimeError(err)
+
+            self.temp_e = self._backup_temp
+            log.error("WARNING: setting temperature to '{}'!".format(self.temp_e))
 
         qv, qs, qb, qc = self._heat_cool(self.temp_e)
         heat = qv
         cool = qs + qb + qc
         diff = np.fabs(heat - cool) / heat
+
         if diff > 1e-2:
+            lvl = logging.DEBUG
+
+            if diff > 1.0:
+                lvl = logging.ERROR
+            elif diff > 1e-1:
+                lvl = logging.INFO
+
             err = "Electron temperature seems inconsistent (Te = {:.2e})!".format(self.temp_e)
             err += "\n\tm: {:.2e}, f: {:.2e}".format(self.msol, self.fedd)
             err += "\n\tHeating: {:.2e}, Cooling: {:.2e}, diff: {:.4e}".format(heat, cool, diff)
-            err += "\n\tThis may mean there is an input error (e.g. mdot may be too large)."
-            if self._verbose:
-                warnings.warn(err, RuntimeWarning)
+            err += "\n\tThis may mean there is an input error (e.g. mdot may be too large... or small?)."
+            log.log(lvl, err)
 
         self.theta_e = radiation.dimensionless_temperature_theta(self.temp_e, MELC)
         # print("Electron effective temperature: {:.2e} K (theta = {:.2e})".format(
