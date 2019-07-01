@@ -14,7 +14,16 @@ except FileNotFoundError as err:
     warnings.warn("Error loading version file '{}'!  '{}'".format(vpath, str(err)), RuntimeWarning)
     __version__ = "v?.?.?"
 
-from . import disks
-from . import spectra
+PATH_DATA = os.path.join(CWD, "data", "")
+if not os.path.exists(PATH_DATA):
+    os.mkdir(PATH_DATA)
 
-from . constants import *
+FAST_NRAD = 2000
+FAST_RMIN = 3.0
+FAST_RMAX = 1.0e5
+
+from . import disks   # noqa
+from . import spectra   # noqa
+from . import fast_spectra  # noqa
+
+from . constants import *   # noqa
