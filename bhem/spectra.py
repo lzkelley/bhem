@@ -12,7 +12,7 @@ from . constants import MELC, MPRT, SPLC, K_BLTZ, H_PLNK
 
 class Mahadevan96:
 
-    def __init__(self, adaf, freqs, log=30, backup_temp=None):
+    def __init__(self, adaf, freqs, log=30, backup_temp=None, quiet=True):
         """
         """
         if not isinstance(log, logging.Logger):
@@ -20,6 +20,7 @@ class Mahadevan96:
 
         self.freqs = freqs
         self._log = log
+        self._quiet = quiet
 
         # Mass in units of solar=masses
         self.msol = adaf.ms
@@ -82,9 +83,10 @@ class Mahadevan96:
         if success:
             log.debug("Success with `t0`={:.2e} ==> t={:.2e}".format(t0, self.temp_e))
         else:
-            log.error("FAILED to find electron temperature!")
-            log.error(str(self))
-            log.error("m = {:.2e}, f = {:.2e}".format(self.msol, self.fedd))
+            lvl = log.DEBUG if self._quiet else log.ERROR
+            log.log(lvl, "FAILED to find electron temperature!")
+            log.log(lvl, str(self))
+            log.log(lvl, "m = {:.2e}, f = {:.2e}".format(self.msol, self.fedd))
             err = ("Unable to find electron temperature!"
                    "\nIf the eddington factor is larger than 1e-2, "
                    "this may be expected!")
@@ -92,7 +94,7 @@ class Mahadevan96:
                 raise RuntimeError(err)
 
             self.temp_e = self._backup_temp
-            log.error("WARNING: setting temperature to '{}'!".format(self.temp_e))
+            log.log(lvl, "WARNING: setting temperature to '{}'!".format(self.temp_e))
 
         qv, qs, qb, qc = self._heat_cool(self.temp_e)
         heat = qv
@@ -102,10 +104,11 @@ class Mahadevan96:
         if diff > 1e-2:
             lvl = logging.DEBUG
 
-            if diff > 1.0:
-                lvl = logging.ERROR
-            elif diff > 1e-1:
-                lvl = logging.INFO
+            if not self._quiet:
+                if diff > 1.0:
+                    lvl = logging.ERROR
+                elif diff > 1e-1:
+                    lvl = logging.INFO
 
             err = "Electron temperature seems inconsistent (Te = {:.2e})!".format(self.temp_e)
             err += "\n\tm: {:.2e}, f: {:.2e}".format(self.msol, self.fedd)
