@@ -9,6 +9,7 @@ Based on:
 import numpy as np
 
 from . import basics, utils
+from . import FAST_NRAD, FAST_RMIN, FAST_RMAX
 from . constants import NWTG, YR, MSOL, SIGMA_SB, K_BLTZ, H_PLNK, SPLC
 
 
@@ -127,8 +128,8 @@ class Thin(Disk):
 
         # NY95b Eq. 2.2
         self.vel_ff[:] = np.sqrt(NWTG * mass / self.rads)
-
         self.temp = self._calc_temp_profile()
+        return
 
     def _calc_temp_profile(self):
         """Temperature profile of a thin, optically thick, accretion disk.
@@ -293,7 +294,7 @@ class ADAF(Disk):
 
         All equations refer to NY95a
         """
-        mass = self.mass
+        # mass = self.mass
         gamma = self.gamma_sh
         ff = self.frac_adv
         alpha = self.alpha_visc
@@ -331,3 +332,236 @@ class ADAF(Disk):
         # NY95b Eq. 2.3
         self.dens[:] = (self.mdot /
                         (4*np.pi*np.sqrt(2.5*c3) * np.square(self.rads) * np.fabs(self.vel_rad)))
+
+
+# NRAD = 2000
+# RMIN = 3.0
+# RMAX = 1.0e5
+
+RADS = np.logspace(*np.log10([FAST_RMIN, FAST_RMAX]), FAST_NRAD)
+RADS_SQRT = np.sqrt(RADS)
+RADS_SQ = np.square(RADS)
+TWO_SQRT = np.sqrt(2.0)
+SPLC_SQ = SPLC**2
+PI_SQ_FOUR = 4 * np.pi**2
+
+VEL_FF = SPLC / (TWO_SQRT * RADS_SQRT)
+
+TEMP_CONST = np.power(3*NWTG / (8*np.pi*SIGMA_SB), 0.25)
+TEMP_ARRAY = TEMP_CONST * np.power((1 - np.sqrt(FAST_RMIN/RADS)) / RADS**3, 0.25)
+
+H_OVER_K = H_PLNK / K_BLTZ
+BB_SPEC_RAD_CONST = 2*H_PLNK / SPLC_SQ
+
+
+class Disk_Fast:
+
+    def __init__(self, mass, alpha_visc=0.1, mdot=None, fedd=None):
+        self.mass = mass
+        self.mdot, self.fedd = utils.mdot_fedd(mass, mdot, fedd)
+        self.ms = mass/MSOL
+        self.rad_schw = basics.radius_schwarzschild(mass)
+        self.alpha_visc = alpha_visc
+        return
+
+    @property
+    def vel_ff(self):
+        return VEL_FF
+
+    @property
+    def freq_kep(self):
+        """Keplerian frequency (i.e. angular-velocity) profile.
+
+        NY95a Eq. 2.3
+        """
+        return self.vel_ff/self.rads
+
+    @property
+    def rs(self):
+        """Radii in schwarzschild units.
+        """
+        return RADS
+
+
+class Thin_Fast(Disk_Fast):
+
+    def __init__(self, mass, **kwargs):
+        """
+        """
+        super().__init__(mass, **kwargs)
+        self._temp0 = np.power(self.mass * self.mdot / self.rad_schw**3, 1/4)
+        return
+
+    @property
+    def temp(self):
+        return self._temp0 * TEMP_ARRAY
+
+    def _blackbody_spectral_radiance(self, freqs, ridx):
+        with np.errstate(divide='ignore'):
+            hv_over_kt = H_OVER_K * freqs[:, np.newaxis] / self.temp[np.newaxis, ridx]
+            bb = BB_SPEC_RAD_CONST * freqs**3 / (np.exp(hv_over_kt) - 1.0)
+
+        return bb
+
+    def blackbody_spectral_luminosity(self, freqs, rmax=None):
+        freqs = np.atleast_1d(freqs)
+        # rmax_rs = rmax if (rmax is None) else rmax / self.rad_schw
+        ridx = slice(None) if (rmax is None) else (RADS < rmax)
+        if (rmax is not None) and np.count_nonzero(ridx) == 0:
+            return np.zeros_like(freqs)
+
+        bb_spec_rad = self._blackbody_spectral_radiance(freqs, ridx=ridx)
+
+        # Integrate over annuli
+        areas = self.rad_schw**2 * RADS_SQ[ridx]
+        bb_lum = PI_SQ_FOUR * np.trapz(bb_spec_rad, x=areas[np.newaxis, :], axis=-1)
+        return bb_lum
+
+
+class ADAF_Fast(Disk_Fast):
+
+    def __init__(self, mass, frac_adv=0.5, beta_gp=0.5, frac_hmass=0.75, **kwargs):
+        """
+        """
+        super().__init__(mass, **kwargs)
+
+        # Fraction of viscously dissipated energy which is advected
+        self.frac_adv = frac_adv
+        # Gas to total pressure fraction (p_g = beta * p)
+        self.beta_gp = beta_gp
+        # Ratio of specific heats (NY95b Eq 2.7)
+        gamma_sh = (32 - 24*beta_gp - 3*np.square(beta_gp)) / (24 - 21*beta_gp)
+        self.gamma_sh = gamma_sh
+
+        # Hydrogen mass fraction X
+        self.frac_hmass = frac_hmass
+        self._rho = None
+
+        self._calc_primitives()
+        return
+
+    @property
+    def dens(self):
+        if self._rho is None:
+            rho = self._dens_norm / RADS_SQ / self.vel_rad
+            self._rho = rho
+        return self._rho
+
+    @property
+    def vel_rad(self):
+        """Radial velocity.
+        """
+        # NY95b Eq. 2.1
+        vrad = - self._c1 * self.alpha_visc * self.vel_ff
+        return vrad
+
+    @property
+    def vel_ang(self):
+        """Angular velocity.
+        """
+        # NY95b Eq. 2.1
+        return self._c2 * self.vel_ff / self.rads
+
+    @property
+    def pres(self):
+        # NY95b 2.3
+        return self.dens * np.square(self.vel_snd)
+
+    @property
+    def pres_mag(self):
+        """Magnetic pressure.
+        """
+        # NY95b Eq. 2.6
+        pb = (1 - self.beta_gp) * self.pres
+        return pb
+
+    @property
+    def pres_gas(self):
+        """Gas pressure.
+        """
+        # NY95b Eq. 2.6
+        pg = self.beta_gp * self.pres
+        return pg
+
+    @property
+    def mag_field_sq(self):
+        """Magnetic Field Squared (assuming equipartition).
+        """
+        # NY95b Eq 2.11
+        return 8*np.pi*self.pres_mag
+
+    @property
+    def vel_snd(self):
+        """Sound speed.
+        """
+        # NY95b Eq. 2.1
+        return np.sqrt(self._c3) * self.vel_ff
+
+    @property
+    def visc_diss(self):
+        """Viscous dissipation (energy per unit volume).
+        """
+        # NY95b Eq 2.5
+        qplus = 3*self._eps_prime * self.dens * np.fabs(self.vel_rad)
+        qplus *= np.square(self.vel_snd) / (2 * self.rads)
+        return qplus
+
+    @property
+    def time_orb(self):
+        """Orbital time (i.e. orbital period).
+        """
+        return 1.0/self.freq_kep
+
+    @property
+    def time_visc(self):
+        """Viscous timescale.
+        """
+        nu_alpha = self.viscocity_kinematic()
+        tvisc = self.rads/nu_alpha
+        return tvisc
+
+    def _calc_primitives(self):
+        """
+
+        All equations refer to NY95a
+        """
+        gamma = self.gamma_sh
+        ff = self.frac_adv
+        alpha = self.alpha_visc
+
+        # Eq. 2.2
+        eps = (5/3 - gamma) / (gamma - 1.0)
+        # Eq. 2.20
+        eps_prime = eps / ff
+
+        # Eq. 3.4
+        gae = np.sqrt(1.0 + 18.0 * np.square(alpha/(5.0 + 2*eps_prime))) - 1.0
+
+        # NY95b Eq. 2.1
+        c1 = gae * (5 + 2*eps_prime) / (3 * np.square(alpha))
+        c2 = np.sqrt(2 * eps_prime * c1 / 3)
+        c3 = 2 * c1 / 3
+
+        x_hmass = self.frac_hmass
+        molw_ion = 4 / (1 + 3*x_hmass)
+        molw_elec = 2 / (1 + x_hmass)
+
+        # Store
+        self._gae = gae
+        self._eps = eps
+        self._eps_prime = eps_prime
+        self._c1 = c1
+        self._c2 = c2
+        self._c3 = c3
+        self.molw_ion = molw_ion
+        self.molw_elec = molw_elec
+
+        # NY95b Eq. 2.1
+        # self.vel_rad[:] = - c1 * alpha * self.vel_ff[:]
+
+        # NY95b Eq. 2.3
+        self._dens_norm = self.mdot / (4*np.pi*np.sqrt(2.5*c3))
+        # self.dens[:] = (self.mdot /
+        #                 (4*np.pi*np.sqrt(2.5*c3) * np.square(self.rads) * np.fabs(self.vel_rad)))
+
+        return
