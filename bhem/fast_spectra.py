@@ -2,7 +2,7 @@
 """
 import datetime
 import os
-import sys
+# import sys
 import logging
 
 import numpy as np
@@ -15,14 +15,15 @@ import zcode.inout as zio
 import zcode.math as zmath
 
 from . import spectra, radiation  # , utils
-from . import PATH_DATA
+from . import PATH_DATA, MASS_EXTR, FEDD_EXTR, RADS_EXTR
 from . constants import MSOL, MELC, MPRT, SPLC, K_BLTZ, H_PLNK
 
-NUM = 32
+NUM = 10
+np.seterr(divide='ignore', invalid='ignore', over='raise')
 
-MASS_EXTR = [1e6, 5e10]
-FEDD_EXTR = [1e-5, 1e-1]
-RADS_EXTR = [3.0, 1e5]
+# MASS_EXTR = [1e6, 5e10]
+# FEDD_EXTR = [1e-5, 1e-1]
+# RADS_EXTR = [3.0, 1e5]
 
 GRID_NAMES = ['mass', 'fedd', 'rmin', 'rmax']
 
@@ -48,7 +49,7 @@ KB_OVER_MEC2 = K_BLTZ / MEC2
 META = dict(ALPHA_VISC=ALPHA_VISC, BETA_GP=BETA_GP, FRAC_ADV=FRAC_ADV)
 
 
-def main(num=None, recreate=False):
+def main(num=None, recreate=True):
     if num is None:
         num = NUM
 
@@ -152,7 +153,7 @@ def get_temp_grid(num, fix=True):
 
     cnt = 0
     beg = datetime.datetime.now()
-    for idx in tqdm.tqdm_notebook(np.ndindex(*shape), total=tot):
+    for idx in tqdm.tqdm(np.ndindex(*shape), total=tot):
         # print(idx)
         vals = [gg[ii] for gg, ii in zip(grid, idx)]
         if vals[2] >= vals[3]:
@@ -170,9 +171,9 @@ def get_temp_grid(num, fix=True):
     grid_temps = np.nan_to_num(grid_temps)
     bads = grid_valid & np.isclose(grid_temps, 0.0)
 
-    logging.warning("Success on : {}".format(zio.frac_str(grid_temps[grid_valid] > 0.0)))
-    logging.warning("nan values: {}".format(zio.frac_str(bads_nan)))
-    logging.warning("Bad values: {}".format(zio.frac_str(bads)))
+    logging.warning("Success on : {}".format(zmath.frac_str(grid_temps[grid_valid] > 0.0)))
+    logging.warning("nan values: {}".format(zmath.frac_str(bads_nan)))
+    logging.warning("Bad values: {}".format(zmath.frac_str(bads)))
     logging.warning("Done after {}, per iteration: {}".format(str(dur), dur_per))
 
     if fix:
@@ -298,12 +299,12 @@ def interp_bad_grid_vals(grid, grid_temps, grid_valid):
     grid_temps = np.copy(grid_temps)
     bads = grid_valid & np.isclose(grid_temps, 0.0)
     shape = [len(gg) for gg in grid]
-    logging.warning("Fixing bad values: {}".format(zio.frac_str(bads)))
+    logging.warning("Fixing bad values: {}".format(zmath.frac_str(bads)))
 
     neighbors = []
     good_neighbors = []
     bads_inds = np.array(np.where(bads)).T
-    for bad in tqdm.tqdm_notebook(bads_inds):
+    for bad in tqdm.tqdm(bads_inds):
         nbs = []
 
         # print(bad)

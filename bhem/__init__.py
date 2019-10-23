@@ -22,8 +22,14 @@ FAST_NRAD = 2000
 FAST_RMIN = 3.0
 FAST_RMAX = 1.0e5
 
+MASS_EXTR = [5e5, 1e11]
+FEDD_EXTR = [1e-5, 1e-1]
+RADS_EXTR = [2.99, 1.01e5]
+
 from . import disks   # noqa
 from . import spectra   # noqa
 from . import fast_spectra  # noqa
+from . import obs   # noqa
+from . import bel   # noqa
 
 from . constants import *   # noqa
