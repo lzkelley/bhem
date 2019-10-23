@@ -32,4 +32,6 @@ from . import fast_spectra  # noqa
 from . import obs   # noqa
 from . import bel   # noqa
 
+from .fast_spectra import FEDD_EXTR, MASS_EXTR, RADS_EXTR
+
 from . constants import *   # noqa
