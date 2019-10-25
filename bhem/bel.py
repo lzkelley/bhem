@@ -81,7 +81,7 @@ class Disk:
         bor = np.sqrt(1 - sini_cosp**2) * psi
         return psi, bor, sini, sini_cosp
 
-    def line_flux(self, wave_rest, waves):
+    def line_flux_e95(self, wave_rest, waves):
 
         freq_rest = SPLC / wave_rest
         freqs = SPLC / waves
@@ -102,8 +102,6 @@ class Disk:
         a2 = zz * np.square(1 - ecosp)
         a3 = xx * np.square(zz) * (1 - ecosp)
         gamma = (a1 + a2) / a3
-        print("gamma temp = ", zmath.stats_str(gamma))
-        print("gamma temp = ", zmath.array_str(gamma.flatten()))
         '''
         NOTE: I think the above is correct, but the expression for u^alpha (Eq.11)
               is missing a (1+2/x)^{-3/2} in the radial component.
@@ -123,11 +121,12 @@ class Disk:
         b4 = np.sqrt(xx*zz*(1 - sini**2 * np.cos(pp)**2))
 
         # Eracleous+1995 - Eq. 15 - as written  *NOTE: may have error (`+` should be `-`)
-        # dop = (1/np.sqrt(zz) - b1/b2 + b3/b4)
+        dop = (1/np.sqrt(zz) - b1/b2 + b3/b4)
         # Eracleous+1995 - Eq. 15 -  *NOTE: rederived*
-        dop = (1/np.sqrt(zz) - b1/b2 - b3/b4)
+        # dop = (1/np.sqrt(zz) - b1/b2 - b3/b4)
         dop = 1 / (gamma * dop)
 
+        '''
         # Eracleous+1995 - between eqs 17 and 18
         sigma = self.sigma_vel * freq_rest / SPLC
 
@@ -136,12 +135,15 @@ class Disk:
         exp = ((fe - freq_rest)/sigma)**2 / 2
 
         intens = np.power(xx, self.em_gamma+1)[np.newaxis, :, :] * np.exp(-exp)
+        '''
+        intens = self.intens(freqs, freq_rest, xx, dop, self.em_gamma)
+
         flux = freq_rest * np.cos(self.inc) * intens * (dop**3 * psi)[np.newaxis, :, :]
 
         print("gamma-1 = ", zmath.stats_str(gamma-1))
         print("dop     = ", zmath.stats_str(dop))
-        # print("sigma = ", zmath.stats_str(sigma))
-        # print("flux  = ", zmath.stats_str(flux))
+        print("dop     = ", zmath.array_str(dop.flatten(), sides=5))
+        print("flux  = ", zmath.stats_str(flux))
 
         return flux
 
@@ -168,7 +170,7 @@ class Disk:
         sin_theta2 = (1 - np.square(sini*np.cos(pp)))
 
         # Construct the contravariant metric (g^{alpha beta}), [t, r, theta, phi]
-        gg = [1/zz, zz, 1/r2, 1/(r2*sin_theta2)]
+        gg = [-1/zz, zz, 1/r2, 1/(r2*sin_theta2)]
 
         # Eracleous+1995 - Eq. 14
         gamma = [v*g*v for (g, v) in zip(gg[1:], vel[1:])]
@@ -180,7 +182,21 @@ class Disk:
 
         return gamma
 
-    def line_flux_2(self, wave_rest, waves):
+    def intens(self, freqs, freq_rest, xx, dop, em_gamma):
+        # Eracleous+1995 - between eqs 17 and 18
+        sigma = self.sigma_vel * freq_rest / SPLC
+
+        # Eracleous+1995 - Eq. 18
+        fe = freqs[:, np.newaxis, np.newaxis] / dop[np.newaxis, :, :]
+        exp = ((fe - freq_rest)/sigma)**2 / 2
+        intens = np.power(xx, em_gamma+1)[np.newaxis, :, :] * np.exp(-exp)
+
+        return intens
+
+    def line_flux(self, wave_rest, waves):
+        freq_rest = SPLC / wave_rest
+        freqs = SPLC / waves
+
         # (R, P)
         xx, pp = zmath.broadcast(self.xsi, self.phi)
 
@@ -215,10 +231,11 @@ class Disk:
         cosp = np.cos(pp - self.phi0)
         # Eracleous+1995 - Eq. 11 [four-velocity of a disk particle]  "u_alpha"
         # NOTE: error in second component, should have a (1-2/x)^{-3/2} !!
+        # NOTE: error in the third component, should have a - sign
         particle = [
             np.sqrt(zz),
             beta_rr / np.power(zz, 3/2),
-            rads[:, np.newaxis] * beta_pp * sini * sin_phi / np.sqrt(zz),
+            - rads[:, np.newaxis] * beta_pp * sini * sin_phi / np.sqrt(zz),
             rads[:, np.newaxis] * np.sqrt((1 - sini**2) * (1 - ecc*cosp) / (xx*zz))
         ]
 
@@ -226,12 +243,16 @@ class Disk:
         dop = gamma * np.sum([aa*bb for aa, bb in zip(photon, particle)], axis=0)
         dop = 1.0 / dop
 
+        intens = self.intens(freqs, freq_rest, xx, dop, self.em_gamma)
+
+        flux = freq_rest * np.cos(self.inc) * intens * (dop**3 * psi)[np.newaxis, :, :]
+
         print("gamma-1 = ", zmath.stats_str(gamma-1))
         print("dop     = ", zmath.stats_str(dop))
-        # print("sigma = ", zmath.stats_str(sigma))
-        # print("flux  = ", zmath.stats_str(flux))
+        print("dop     = ", zmath.array_str(dop.flatten(), sides=5))
+        print("flux  = ", zmath.stats_str(flux))
 
-        return
+        return flux
 
     def line_flux_time(self, wave_rest, waves, times, continuum):
         flux = self.line_flux(wave_rest, waves)
