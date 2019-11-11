@@ -20,7 +20,7 @@ def _lband_to_lbol__pow_law(lam_lum_lam, alpha, beta, lum0=1.0, fiso=1.0):
 
 
 def _lbol_to_lband__pow_law(lbol, alpha, beta, lum0=1.0, fiso=1.0):
-    """
+    """Returns lambda*L_lambda
 
     log(L_iso) = alpha + beta * log10(lambda * L_lambda / lum0)
     L_iso = L_bol / fiso
@@ -57,6 +57,29 @@ def lum5100_from_lbol_runnoe2012(lbol):
 
     """
     lam_lum_lam = _lbol_to_lband__pow_law(lbol, 4.89, 0.91, lum0=1.0, fiso=0.75)
+    return lam_lum_lam
+
+
+def lum3000_from_lbol_runnoe2012(lbol):
+    """
+    Runnoe+2012 [1201.5155]
+    Eq.10 & 13
+
+    log(Liso) = (1.85 ± 1.27) + (0.98 ± 0.03) log(3000L3000).
+
+    """
+    lam_lum_lam = _lbol_to_lband__pow_law(lbol, 1.85, 0.98, lum0=1.0, fiso=0.75)
+    return lam_lum_lam
+
+
+def lum1450_from_lbol_runnoe2012(lbol):
+    """
+    Runnoe+2012 [1201.5155]
+    Eq.9 & 13
+
+    log(Liso) = (4.74 ± 1.00) + (0.91 ± 0.02) log(1450L1450).
+    """
+    lam_lum_lam = _lbol_to_lband__pow_law(lbol, 4.74, 0.91, lum0=1.0, fiso=0.75)
     return lam_lum_lam
 
 
