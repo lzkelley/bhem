@@ -19,6 +19,17 @@ def _lband_to_lbol__pow_law(lam_lum_lam, alpha, beta, lum0=1.0, fiso=1.0):
     return lbol
 
 
+def _dist_pars(arg, num):
+    """If `arg` is tuple (2,), draw `num` points from normal distribution with those parameters.
+    """
+    if isinstance(arg, tuple):
+        if len(arg) != 2:
+            raise ValueError("`arg` must be a tuple of (mean, std)!")
+        arg = np.random.normal(*arg, size=num)
+
+    return arg
+
+
 def _lbol_to_lband__pow_law(lbol, alpha, beta, lum0=1.0, fiso=1.0):
     """Returns lambda*L_lambda
 
@@ -26,6 +37,10 @@ def _lbol_to_lband__pow_law(lbol, alpha, beta, lum0=1.0, fiso=1.0):
     L_iso = L_bol / fiso
     """
     liso_log = np.log10(lbol/fiso)
+    num = np.size(lbol)
+
+    alpha = _dist_pars(alpha, num)
+    beta = _dist_pars(beta, num)
 
     lam_lum_lam = lum0 * np.power(10, (liso_log - alpha)/beta)
     return lam_lum_lam
@@ -36,7 +51,7 @@ def _lbol_to_lband__pow_law(lbol, alpha, beta, lum0=1.0, fiso=1.0):
 # ------------------------------------------------------------------------------------------------
 
 
-def lbol_from_5100ang_runnoe2012(lam_lum_lam):
+def lbol_from_5100ang_runnoe2012(lam_lum_lam, scatter=False):
     """
     Runnoe+2012 [1201.5155]
     Eq.11 & 13
@@ -44,11 +59,17 @@ def lbol_from_5100ang_runnoe2012(lam_lum_lam):
     log(Liso) = (4.89 ± 1.66) + (0.91 ± 0.04) log(5100, L5100),   [Eq.11]
 
     """
-    lbol = _lband_to_lbol__pow_law(lam_lum_lam, 4.89, 0.91, lum0=1.0, fiso=0.75)
+    alpha = (4.89, 1.66)
+    beta = (0.91, 0.04)
+    if not scatter:
+        alpha = alpha[0]
+        beta = beta[0]
+
+    lbol = _lband_to_lbol__pow_law(lam_lum_lam, alpha, beta, lum0=1.0, fiso=0.75)
     return lbol
 
 
-def lum5100_from_lbol_runnoe2012(lbol):
+def lum5100_from_lbol_runnoe2012(lbol, scatter=False):
     """
     Runnoe+2012 [1201.5155]
     Eq.11 & 13
@@ -56,7 +77,13 @@ def lum5100_from_lbol_runnoe2012(lbol):
     log(Liso) = (4.89 ± 1.66) + (0.91 ± 0.04) log(5100, L5100),   [Eq.11]
 
     """
-    lam_lum_lam = _lbol_to_lband__pow_law(lbol, 4.89, 0.91, lum0=1.0, fiso=0.75)
+    alpha = (4.89, 1.66)
+    beta = (0.91, 0.04)
+    if not scatter:
+        alpha = alpha[0]
+        beta = beta[0]
+
+    lam_lum_lam = _lbol_to_lband__pow_law(lbol, alpha, beta, lum0=1.0, fiso=0.75)
     return lam_lum_lam
 
 

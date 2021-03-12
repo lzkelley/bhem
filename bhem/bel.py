@@ -1,6 +1,7 @@
 """
 """
 
+'''
 import logging
 
 import numpy as np
@@ -248,7 +249,7 @@ class Disk:
         a2 = zz * np.square(1 - ecosp)
         a3 = xx * np.square(zz) * (1 - ecosp)
         gamma = (a1 + a2) / a3
-        '''
+        """
         NOTE: I think the above is correct, but the expression for u^alpha (Eq.11)
               is missing a (1+2/x)^{-3/2} in the radial component.
         # Eracleous+1995 - Eq. 16  NOTE: *rederived*
@@ -256,7 +257,7 @@ class Disk:
         gamma /= (zz * xx * (1 - ecosp))
         print("gamma temp = ", zmath.stats_str(gamma))
         print("gamma temp = ", zmath.array_str(gamma.flatten()))
-        '''
+        """
 
         gamma = 1 / np.sqrt(1 - gamma)
 
@@ -272,7 +273,7 @@ class Disk:
         # dop = (1/np.sqrt(zz) - b1/b2 - b3/b4)
         dop = 1 / (gamma * dop)
 
-        '''
+        """
         # Eracleous+1995 - between eqs 17 and 18
         sigma = self.sigma_vel * freq_rest / SPLC
 
@@ -281,7 +282,7 @@ class Disk:
         exp = ((fe - freq_rest)/sigma)**2 / 2
 
         intens = np.power(xx, self.em_gamma+1)[np.newaxis, :, :] * np.exp(-exp)
-        '''
+        """
         intens = self.intens(freqs, freq_rest, xx, dop, self.em_gamma)
 
         flux = freq_rest * np.cos(self.inc) * intens * (dop**3 * psi)[np.newaxis, :, :]
@@ -485,7 +486,7 @@ class Disk:
 
         return lts
 
-    '''
+    """
     def line_flux_time_nd(self, wave_rest, waves, times, continuum):
         flux, *_ = self.line_flux(wave_rest, waves)
         delay = self.delay()
@@ -521,7 +522,7 @@ class Disk:
         lts = Line_Time_Spectrum(self, times, waves, flux, continuum, wave_rest)
 
         return lts
-    '''
+    """
 
 
 def half_max_locs(waves, flux):
@@ -624,3 +625,4 @@ def rad_blr(mass, fedd):
     vv = (mass / (1e8*MSOL)) * (fedd / 0.1)
     rb = 0.16*PC * np.power(vv, 0.59)
     return rb
+'''

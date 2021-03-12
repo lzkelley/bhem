@@ -1,6 +1,7 @@
 """Damped Random Walks
 """
 
+'''
 import numpy as np
 
 from zcode.constants import MSOL
@@ -106,11 +107,14 @@ def _macleod2010_fit_func(pars, errs, lambda_rf, imag, mbh, randomize=False):
     aa, bb, cc, dd = pars
 
     lf = aa + bb*np.log(lambda_rf/4000e-8) + cc*(imag + 23) + dd*np.log(mbh/(1e9*MSOL))
-    ff = np.exp(lf)
+    # ff = np.exp(lf)
+    ff = 10**lf
     return ff
 
 
 def macleod2010_sfinf(imag, mbh, randomize=False):
+    """`mbh` should be in grams (NOTE: I THINK!)
+    """
     lambda_iband = 7690e-8
     pars = [-0.51, -0.479, 0.131, 0.18]
     errs = [0.02, 0.005, 0.008, 0.03]
@@ -118,7 +122,11 @@ def macleod2010_sfinf(imag, mbh, randomize=False):
 
 
 def macleod2010_tau(imag, mbh, randomize=False):
+    """`mbh` should be in grams (NOTE: I THINK!)
+    `tau` is returned in units of days (NOTE: I THINK!)
+    """
     lambda_iband = 7690e-8
     pars = [2.4, 0.17, 0.03, 0.21]
     errs = [0.2, 0.02, 0.04, 0.07]
     return _macleod2010_fit_func(pars, errs, lambda_iband, imag, mbh, randomize=randomize)
+'''
