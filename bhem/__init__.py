@@ -22,10 +22,16 @@ FAST_NRAD = 2000
 FAST_RMIN = 3.0
 FAST_RMAX = 1.0e5
 
+TEMP_GRID_SIZE = 32
+
+MASS_EXTR = [1e5, 5e10]
+FEDD_EXTR = [1e-5, 1e-1]
+RADS_EXTR = [3.0, 1e5]
+
 from . import disks   # noqa
 from . import spectra   # noqa
 from . import fast_spectra  # noqa
 
-from .fast_spectra import FEDD_EXTR, MASS_EXTR, RADS_EXTR
+# from .fast_spectra import FEDD_EXTR, MASS_EXTR, RADS_EXTR
 
 from . constants import *   # noqa
